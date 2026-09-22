@@ -1,0 +1,14 @@
+# Dependências (pastas pesadas que não sobem pro GitHub)
+node_modules/
+
+# Arquivos de ambiente e senhas (NUNCA devem subir pro GitHub)
+.env
+.env.local
+
+# Arquivos de compilação
+dist/
+build/
+
+# Logs e arquivos do sistema
+*.log
+.DS_Store
