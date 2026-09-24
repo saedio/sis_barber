@@ -1,59 +1,125 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getServicos, getSlots, criarAgendamento } from '@/services/api';
 import { Servico, Slot } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
 
-function formatDateForDisplay(date: Date) {
-  return date.toLocaleDateString('pt-BR');
+function formatDateForDisplay(dateString: string) {
+  const [year, month, day] = dateString.split('-').map(Number);
+  const value = new Date(year, month - 1, day);
+  return value.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function parseDisplayDate(value: string) {
-  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
-  if (!match) return '';
+function formatSlotForDisplay(horario: string) {
+  const [hours, minutes] = horario.split(':').map(Number);
+  const inicioMinutos = hours * 60 + minutes;
+  const fimMinutos = inicioMinutos === 19 * 60 ? 19 * 60 + 30 : inicioMinutos + 60;
+  const formatarHora = (totalMinutos: number) => {
+    const hora = Math.floor(totalMinutos / 60).toString().padStart(2, '0');
+    const minuto = (totalMinutos % 60).toString().padStart(2, '0');
+    return `${hora}h${minuto}`;
+  };
 
-  const [, day, month, year] = match;
-  const date = new Date(Number(year), Number(month) - 1, Number(day));
-  if (
-    date.getFullYear() !== Number(year) ||
-    date.getMonth() !== Number(month) - 1 ||
-    date.getDate() !== Number(day)
-  ) {
-    return '';
-  }
-
-  return `${year}-${month}-${day}`;
+  return `${formatarHora(inicioMinutos)} as ${formatarHora(fimMinutos)}`;
 }
 
 export default function Home() {
   const [servicos, setServicos] = useState<Servico[]>([]);
-  const [selectedServico, setSelectedServico] = useState<string>('');
-  const [selectedDate, setSelectedDate] = useState<string>(
-    new Date().toISOString().split('T')[0]
-  );
-  const [displayDate, setDisplayDate] = useState(() => formatDateForDisplay(new Date()));
-  const calendarInputRef = useRef<HTMLInputElement>(null);
+  const [selectedServico, setSelectedServico] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
   const [slots, setSlots] = useState<Slot[]>([]);
-  const [selectedSlot, setSelectedSlot] = useState<string>('');
-
+  const [selectedSlot, setSelectedSlot] = useState('');
   const [clienteNome, setClienteNome] = useState('');
   const [clienteTelefone, setClienteTelefone] = useState('');
-
+  const [nomeEmFoco, setNomeEmFoco] = useState(false);
+  const [telefoneEmFoco, setTelefoneEmFoco] = useState(false);
   const [loadingServicos, setLoadingServicos] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [sucesso, setSucesso] = useState(false);
   const [erro, setErro] = useState('');
+  const [showSucesso, setShowSucesso] = useState(false);
+  const [telaVisivel, setTelaVisivel] = useState(false);
+  const servicoSelectRef = useRef<HTMLSelectElement | null>(null);
+  const dataInputRef = useRef<HTMLInputElement | null>(null);
+  const slotSelectRef = useRef<HTMLSelectElement | null>(null);
 
   useEffect(() => {
+    const frame = requestAnimationFrame(() => setTelaVisivel(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const abrirListaSelect = (element: HTMLSelectElement | HTMLInputElement | null) => {
+    if (!element) return;
+
+    if ('showPicker' in element && typeof element.showPicker === 'function') {
+      element.showPicker();
+      return;
+    }
+
+    element.focus();
+    element.click();
+  };
+
+  const servicosOrdenados = useMemo(() => {
+    const ordemDesejada: Record<string, number> = {
+      'Selecionar serviço': 0,
+      'Corte': 1,
+      'Barba': 2,
+      'Luzes': 3,
+      'Nevou': 4,
+      'Sobrancelha': 5,
+      'Combo completo': 6,
+      'Atendimento kids atípicos': 7,
+    };
+
+    return [
+      { id: '', nome: 'Selecionar serviço', preco_centavos: 0 },
+      ...[...servicos]
+        .sort((a, b) => {
+          const rankA = ordemDesejada[a.nome] ?? 999;
+          const rankB = ordemDesejada[b.nome] ?? 999;
+          return rankA - rankB;
+        })
+        .map((servico) => ({ ...servico, nome: servico.nome })),
+    ];
+  }, [servicos]);
+
+  const abrirListaServicos = (event?: React.MouseEvent) => {
+    event?.preventDefault();
+
+    const select = servicoSelectRef.current;
+    if (!select) return;
+
+    if (typeof select.showPicker === 'function') {
+      select.showPicker();
+      return;
+    }
+
+    select.focus();
+    select.click();
+  };
+
+  useEffect(() => {
+    let mounted = true;
+
     getServicos()
       .then((data) => {
+        if (!mounted) return;
         setServicos(data);
-        if (data.length > 0) setSelectedServico(data[0].id);
+        setSelectedServico((current) => current || '');
       })
-      .catch(() => setErro('Erro ao carregar serviços.'))
-      .finally(() => setLoadingServicos(false));
+      .catch(() => {
+        if (!mounted) return;
+        setErro('Erro ao carregar serviços.');
+      })
+      .finally(() => {
+        if (mounted) setLoadingServicos(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -67,12 +133,18 @@ export default function Home() {
       .then((data) => setSlots(data))
       .catch(() => setErro('Erro ao buscar horários disponíveis.'))
       .finally(() => setLoadingSlots(false));
-  }, [selectedServico, selectedDate]);
+  }, [selectedDate, selectedServico]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedSlot || !clienteNome || !clienteTelefone) {
-      setErro('Preencha todos os campos e escolha um horário.');
+  const servicoSelecionado = useMemo(
+    () => servicos.find((servico) => servico.id === selectedServico),
+    [servicos, selectedServico]
+  );
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!selectedServico || !selectedDate || !selectedSlot || !clienteNome || !clienteTelefone) {
+      setErro('Preencha todos os campos antes de confirmar.');
       return;
     }
 
@@ -80,20 +152,17 @@ export default function Home() {
     setErro('');
 
     try {
-      const dataHoraInicio = `${selectedDate}T${selectedSlot}:00`;
       await criarAgendamento({
         clienteNome,
         clienteTelefone,
         servicoId: selectedServico,
-        dataHoraInicio,
+        dataHoraInicio: `${selectedDate}T${selectedSlot}:00`,
       });
 
-      setSucesso(true);
+      setShowSucesso(true);
       setClienteNome('');
       setClienteTelefone('');
       setSelectedSlot('');
-      setSlots((prev) => prev.filter((slot) => slot.horario !== selectedSlot));
-
       const slotsAtualizados = await getSlots(selectedDate, selectedServico);
       setSlots(slotsAtualizados);
     } catch (err: any) {
@@ -104,147 +173,193 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-neutral-900 text-neutral-100 p-6 flex flex-col items-center">
-      <div className="max-w-xl w-full bg-neutral-800 rounded-lg p-6 border border-neutral-700 shadow-xl mt-8">
-        <h1 className="text-2xl font-bold text-center mb-6 text-white">Agendamento Online</h1>
+    <main className={`barbezap-shell${telaVisivel ? ' is-visible' : ''}`}>
+      <div className="barbezap-container">
+        <div className="brand-row">
+          <img src="/logo-white.svg" alt="BarbeZap" className="brand-logo brand-logo--white" />
+        </div>
 
-        {sucesso && (
-          <div className="mb-4 p-4 bg-emerald-900/50 border border-emerald-500 rounded text-emerald-200 text-center">
-            Agendamento realizado com sucesso!
-          </div>
-        )}
+        {!showSucesso ? (
+          <form onSubmit={handleSubmit} className="ds-stack">
+            <h1 className="brand-heading">Agendamento Online</h1>
+            <p className="ds-subtitle">
+              Escolha o serviço, data e horário do seu atendimento
+            </p>
 
-        {erro && (
-          <div className="mb-4 p-4 bg-red-900/50 border border-red-500 rounded text-red-200 text-center">
-            {erro}
-          </div>
-        )}
+            <div>
+              <label className="ds-label">
+                1. Escolha o serviço:
+              </label>
+              <div className="ds-field ds-field-select">
+                {loadingServicos ? (
+                  <span className="field-text">Carregando...</span>
+                ) : (
+                  <>
+                    <select
+                      ref={servicoSelectRef}
+                      className={selectedServico ? '' : 'field-placeholder'}
+                      value={selectedServico}
+                      onChange={(e) => {
+                        setSelectedServico(e.target.value);
+                        e.currentTarget.blur();
+                      }}
+                      aria-label="Escolha o serviço"
+                    >
+                      <option value="">Selecionar serviço</option>
+                      {servicosOrdenados
+                        .filter((servico) => servico.nome !== 'Selecionar serviço')
+                        .map((servico) => (
+                          <option key={servico.id || servico.nome} value={servico.id || ''}>
+                            {servico.nome} - {servico.id ? formatCurrency(servico.preco_centavos) : ''}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="ds-select-trigger"
+                      onClick={() => abrirListaSelect(servicoSelectRef.current)}
+                      aria-label="Abrir lista de serviços"
+                    >
+                      ▾
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium mb-2">1. Escolha o Serviço</label>
-            {loadingServicos ? (
-              <p className="text-sm text-neutral-400">Carregando serviços...</p>
-            ) : (
-              <div className="grid grid-cols-1 gap-2">
-                {servicos.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setSelectedServico(s.id)}
-                    className={`p-3 rounded border text-left flex justify-between items-center transition ${
-                      selectedServico === s.id
-                        ? 'border-white bg-neutral-700 font-semibold'
-                        : 'border-neutral-700 bg-neutral-800 hover:bg-neutral-700/50'
-                    }`}
-                  >
-                    <span>{s.nome} ({s.duracao_minutos} min)</span>
-                    <span>{formatCurrency(s.preco_centavos)}</span>
-                  </button>
-                ))}
+            <div>
+              <label className="ds-label">
+                2. Escolha a data:
+              </label>
+              <div className="ds-field ds-field-date ds-field-select">
+                <span className={`date-field-value${selectedDate ? '' : ' field-placeholder'}`}>
+                  {selectedDate ? formatDateForDisplay(selectedDate) : 'Selecionar data'}
+                </span>
+                <input
+                  ref={dataInputRef}
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => {
+                    setSelectedDate(e.target.value);
+                    e.currentTarget.blur();
+                  }}
+                  aria-label="Escolha a data"
+                  onClick={() => abrirListaSelect(dataInputRef.current)}
+                />
+                <button
+                  type="button"
+                  className="ds-select-trigger"
+                  onClick={() => abrirListaSelect(dataInputRef.current)}
+                  aria-label="Abrir calendário"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M7 3.75V6.5M17 3.75V6.5M4.75 9.25H19.25M6.5 5.25H17.5C18.7426 5.25 19.75 6.25736 19.75 7.5V17.5C19.75 18.7426 18.7426 19.75 17.5 19.75H6.5C5.25736 19.75 4.25 18.7426 4.25 17.5V7.5C4.25 6.25736 5.25736 5.25 6.5 5.25Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="ds-label">
+                3. Escolha o horário:
+              </label>
+              <div className="ds-field ds-field-select">
+                {loadingSlots ? (
+                  <span className="field-text">Buscando horários...</span>
+                ) : (
+                  <>
+                    <select
+                      ref={slotSelectRef}
+                      className={selectedSlot ? '' : 'field-placeholder'}
+                      value={selectedSlot}
+                      onChange={(e) => {
+                        setSelectedSlot(e.target.value);
+                        e.currentTarget.blur();
+                      }}
+                      aria-label="Escolha o horário"
+                    >
+                      <option value="">Selecione um horário</option>
+                      {slots
+                        .filter((slot) => slot.disponivel)
+                        .map((slot) => (
+                          <option key={slot.horario} value={slot.horario}>
+                            {formatSlotForDisplay(slot.horario)}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      className="ds-select-trigger"
+                      onClick={() => abrirListaSelect(slotSelectRef.current)}
+                      aria-label="Abrir lista de horários"
+                    >
+                      ▾
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="ds-divider" aria-hidden="true" />
+
+            <div className="ds-stack ds-user-fields">
+              <div>
+                <label className="ds-label ds-label-compact">Seu nome:</label>
+                <div className="ds-field">
+                  <input
+                    type="text"
+                    value={clienteNome}
+                    onChange={(e) => setClienteNome(e.target.value)}
+                    onFocus={() => setNomeEmFoco(true)}
+                    onBlur={() => setNomeEmFoco(false)}
+                    placeholder={nomeEmFoco ? '' : 'Insira seu nome completo'}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="ds-label ds-label-compact">Seu Telefone/WhatsApp:</label>
+                <div className="ds-field">
+                  <input
+                    type="tel"
+                    value={clienteTelefone}
+                    onChange={(e) => setClienteTelefone(e.target.value)}
+                    onFocus={() => setTelefoneEmFoco(true)}
+                    onBlur={() => setTelefoneEmFoco(false)}
+                    placeholder={telefoneEmFoco ? '' : 'Ex: (11) 99999-9999'}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {erro && (
+              <div className="ds-error">
+                {erro}
               </div>
             )}
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">2. Escolha a Data</label>
-            <div className="relative">
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="DD/MM/AAAA"
-                value={displayDate}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setDisplayDate(value);
-                  setSelectedDate(parseDisplayDate(value));
-                }}
-                className="w-full bg-neutral-900 border border-neutral-700 rounded p-3 pr-12 text-white focus:outline-none focus:border-white"
-              />
-              <input
-                ref={calendarInputRef}
-                type="date"
-                value={selectedDate}
-                onChange={(e) => {
-                  setSelectedDate(e.target.value);
-                  setDisplayDate(formatDateForDisplay(new Date(`${e.target.value}T00:00:00`)));
-                }}
-                aria-label="Abrir calendário"
-                className="absolute right-0 top-0 z-10 h-full w-12 cursor-pointer opacity-0"
-                style={{ colorScheme: 'dark' }}
-              />
+            <button type="submit" className="ds-button ds-button-primary" disabled={submitting}>
+              {submitting ? 'Confirmando...' : 'Agendar agora'}
+            </button>
+          </form>
+        ) : (
+          <div className="modal-backdrop" role="dialog" aria-modal="true">
+            <div className="modal-card">
+              <div className="modal-icon">✓</div>
+              <h2>Agendamento realizado</h2>
+              <p>
+                Seu agendamento foi realizado com sucesso, te enviaremos uma confirmação no WhatsApp e no email cadastrado.
+              </p>
               <button
                 type="button"
-                aria-label="Abrir calendário"
-                onClick={() => calendarInputRef.current?.showPicker()}
-                className="absolute right-0 top-0 z-20 h-full w-12 text-lg text-neutral-300 hover:text-white"
+                className="ds-button ds-button-primary"
+                onClick={() => setShowSucesso(false)}
               >
-                📅
+                Fechar App
               </button>
             </div>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">3. Escolha o Horário</label>
-            {loadingSlots ? (
-              <p className="text-sm text-neutral-400">Buscando horários livres...</p>
-            ) : (
-              <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1">
-                {slots.map((slot) => (
-                  <button
-                    key={slot.horario}
-                    type="button"
-                    disabled={!slot.disponivel}
-                    onClick={() => setSelectedSlot(slot.horario)}
-                    className={`p-2 rounded border text-center text-sm transition ${
-                      !slot.disponivel
-                        ? 'border-neutral-800 bg-neutral-900 text-neutral-600 cursor-not-allowed'
-                        : selectedSlot === slot.horario
-                        ? 'border-white bg-white text-black font-bold'
-                        : 'border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-white'
-                    }`}
-                  >
-                    {slot.horario}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-4 pt-4 border-t border-neutral-700">
-            <div>
-              <label className="block text-sm font-medium mb-1">Seu Nome</label>
-              <input
-                type="text"
-                required
-                placeholder="Ex: João Silva"
-                value={clienteNome}
-                onChange={(e) => setClienteNome(e.target.value)}
-                className="w-full bg-neutral-900 border border-neutral-700 rounded p-3 text-white focus:outline-none focus:border-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Seu Telefone / WhatsApp</label>
-              <input
-                type="tel"
-                required
-                placeholder="Ex: 11999998888"
-                value={clienteTelefone}
-                onChange={(e) => setClienteTelefone(e.target.value)}
-                className="w-full bg-neutral-900 border border-neutral-700 rounded p-3 text-white focus:outline-none focus:border-white"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={submitting || !selectedSlot}
-            className="w-full py-3 bg-white text-black font-bold rounded hover:bg-neutral-200 transition disabled:bg-neutral-700 disabled:text-neutral-500 disabled:cursor-not-allowed"
-          >
-            {submitting ? 'Confirmando...' : 'Confirmar Agendamento'}
-          </button>
-        </form>
+        )}
       </div>
     </main>
   );

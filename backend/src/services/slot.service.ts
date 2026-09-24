@@ -1,6 +1,18 @@
 import { pool } from '../config/database';
 
 const BRAZIL_TZ = 'America/Sao_Paulo';
+const HORARIOS_DISPONIVEIS = [
+  '10:00',
+  '11:00',
+  '12:00',
+  '13:00',
+  '14:00',
+  '15:00',
+  '16:00',
+  '17:00',
+  '18:00',
+  '19:00',
+];
 
 function timeToMinutes(value: string): number {
   const [hours, minutes] = value.split(':').map(Number);
@@ -72,9 +84,14 @@ export class SlotService {
     const inicioAlmoco = configuracao.inicio_almoco ? timeToMinutes(configuracao.inicio_almoco) : null;
     const fimAlmoco = configuracao.fim_almoco ? timeToMinutes(configuracao.fim_almoco) : null;
 
-    for (let inicioMinuto = horarioAbertura; inicioMinuto + duracaoServico <= horarioFechamento; inicioMinuto += duracaoServico) {
+    for (const horario of HORARIOS_DISPONIVEIS) {
+      const inicioMinuto = timeToMinutes(horario);
       const inicioSlotStr = minutesToTime(inicioMinuto);
       const fimSlotStr = minutesToTime(inicioMinuto + duracaoServico);
+
+      if (inicioMinuto < horarioAbertura || inicioMinuto + duracaoServico > horarioFechamento) {
+        continue;
+      }
 
       const noAlmoco = inicioAlmoco !== null && fimAlmoco !== null
         ? inicioMinuto < fimAlmoco && inicioMinuto + duracaoServico > inicioAlmoco
