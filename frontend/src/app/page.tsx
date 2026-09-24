@@ -1,9 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getServicos, getSlots, criarAgendamento } from '@/services/api';
 import { Servico, Slot } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
+
+function formatDateForDisplay(date: Date) {
+  return date.toLocaleDateString('pt-BR');
+}
+
+function parseDisplayDate(value: string) {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value);
+  if (!match) return '';
+
+  const [, day, month, year] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  if (
+    date.getFullYear() !== Number(year) ||
+    date.getMonth() !== Number(month) - 1 ||
+    date.getDate() !== Number(day)
+  ) {
+    return '';
+  }
+
+  return `${year}-${month}-${day}`;
+}
 
 export default function Home() {
   const [servicos, setServicos] = useState<Servico[]>([]);
@@ -11,6 +32,8 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
+  const [displayDate, setDisplayDate] = useState(() => formatDateForDisplay(new Date()));
+  const calendarInputRef = useRef<HTMLInputElement>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string>('');
 
@@ -57,7 +80,7 @@ export default function Home() {
     setErro('');
 
     try {
-      const dataHoraInicio = `${selectedDate}T${selectedSlot}:00.000Z`;
+      const dataHoraInicio = `${selectedDate}T${selectedSlot}:00`;
       await criarAgendamento({
         clienteNome,
         clienteTelefone,
@@ -69,6 +92,7 @@ export default function Home() {
       setClienteNome('');
       setClienteTelefone('');
       setSelectedSlot('');
+      setSlots((prev) => prev.filter((slot) => slot.horario !== selectedSlot));
 
       const slotsAtualizados = await getSlots(selectedDate, selectedServico);
       setSlots(slotsAtualizados);
@@ -124,12 +148,40 @@ export default function Home() {
 
           <div>
             <label className="block text-sm font-medium mb-2">2. Escolha a Data</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full bg-neutral-900 border border-neutral-700 rounded p-3 text-white focus:outline-none focus:border-white"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="DD/MM/AAAA"
+                value={displayDate}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setDisplayDate(value);
+                  setSelectedDate(parseDisplayDate(value));
+                }}
+                className="w-full bg-neutral-900 border border-neutral-700 rounded p-3 pr-12 text-white focus:outline-none focus:border-white"
+              />
+              <input
+                ref={calendarInputRef}
+                type="date"
+                value={selectedDate}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value);
+                  setDisplayDate(formatDateForDisplay(new Date(`${e.target.value}T00:00:00`)));
+                }}
+                aria-label="Abrir calendário"
+                className="absolute right-0 top-0 z-10 h-full w-12 cursor-pointer opacity-0"
+                style={{ colorScheme: 'dark' }}
+              />
+              <button
+                type="button"
+                aria-label="Abrir calendário"
+                onClick={() => calendarInputRef.current?.showPicker()}
+                className="absolute right-0 top-0 z-20 h-full w-12 text-lg text-neutral-300 hover:text-white"
+              >
+                📅
+              </button>
+            </div>
           </div>
 
           <div>

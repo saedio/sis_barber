@@ -126,9 +126,8 @@ CREATE TRIGGER trg_update_agendamentos BEFORE UPDATE ON agendamentos FOR EACH RO
 -- =============================================================================
 
 INSERT INTO barbearia (nome, telefone, horario_abertura, horario_fechamento, inicio_almoco, fim_almoco) 
-VALUES ('Barbearia', '11999999999', '09:00:00', '19:00:00', '12:00:00', '13:00:00');
+VALUES ('Barbearia', '11999999999', '09:00:00', '12:00:00', NULL, NULL);
 
 INSERT INTO servicos (nome, descricao, preco, duracao_minutos) VALUES
-('Corte de Cabelo', 'Corte masculino tradicional ou moderno na tesoura/máquina', 35.00, 30),
-('Barba Completa', 'Modelagem de barba com toalha quente e navalha', 25.00, 30),
-('Combo Cabelo + Barba', 'Corte completo + barba desenhada com desconto', 55.00, 50);
+('Corte', 'Corte masculino', 35.00, 60),
+('Barba', 'Barba', 15.00, 60);

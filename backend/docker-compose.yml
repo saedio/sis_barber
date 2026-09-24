@@ -10,9 +10,10 @@ services:
       POSTGRES_PASSWORD: barbersis123
       POSTGRES_DB: sis_barber
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
 
 volumes:
   pgdata:
