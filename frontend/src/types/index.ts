@@ -22,8 +22,21 @@ export interface Agendamento {
   data_hora_inicio: string;
   data_hora_fim: string;
   status: string;
+  servico_id: string;
   cliente_nome: string;
   cliente_telefone: string;
   servico_nome: string;
   preco_centavos: number;
+  observacao?: string | null;
+}
+
+export interface BloqueioAgenda {
+  id: string;
+  data_inicio: string | null;
+  data_fim: string | null;
+  dia_semana: number | null;
+  hora_inicio: string | null;
+  hora_fim: string | null;
+  motivo: string;
+  ativo: boolean;
 }

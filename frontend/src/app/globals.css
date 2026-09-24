@@ -328,6 +328,103 @@ textarea {
 
 .ds-field-date {
   gap: 10px;
+  overflow: visible;
+}
+
+.booking-calendar {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10;
+  width: 280px;
+  padding: 14px;
+  background: #10171d;
+  border: 1px solid var(--yellow);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+.booking-calendar-header,
+.booking-calendar-weekdays,
+.booking-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  align-items: center;
+  gap: 5px;
+}
+
+.booking-calendar-header {
+  grid-template-columns: 32px 1fr 32px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.booking-calendar-header strong {
+  color: var(--white);
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}
+
+.booking-calendar-header button,
+.booking-calendar-grid button {
+  border: 0;
+  cursor: pointer;
+}
+
+.booking-calendar-header button {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--white);
+  font-size: 1.2rem;
+}
+
+.booking-calendar-weekdays {
+  color: var(--muted-strong);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.booking-calendar-grid {
+  margin-top: 6px;
+}
+
+.booking-calendar-grid button,
+.booking-calendar-grid span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 0.78rem;
+}
+
+.booking-calendar-grid button {
+  background: transparent;
+  color: var(--white);
+}
+
+.booking-calendar-grid button:hover:not(:disabled),
+.booking-calendar-grid button.is-selected {
+  background: var(--yellow);
+  color: #13181d;
+}
+
+.booking-calendar-grid button:disabled {
+  background: transparent;
+  color: rgba(245, 245, 245, 0.25);
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.booking-calendar small {
+  display: block;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-align: center;
 }
 
 .date-field-value {
@@ -407,6 +504,123 @@ form.ds-stack {
   margin: 0 auto;
 }
 
+@keyframes admin-component-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes admin-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes admin-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.admin-shell-page:not(.is-visible) .admin-shell > *:not(.admin-modal-backdrop):not(.admin-confirm-backdrop) {
+  opacity: 0;
+}
+
+.admin-shell-page.is-visible .admin-shell > *:not(.admin-modal-backdrop):not(.admin-confirm-backdrop) {
+  animation: admin-component-in 0.5s ease-out both;
+}
+
+.admin-shell-page.is-visible .admin-shell > *:nth-child(1) { animation-delay: 0.05s; }
+.admin-shell-page.is-visible .admin-shell > *:nth-child(2) { animation-delay: 0.12s; }
+.admin-shell-page.is-visible .admin-shell > *:nth-child(3) { animation-delay: 0.19s; }
+.admin-shell-page.is-visible .admin-shell > *:nth-child(4) { animation-delay: 0.26s; }
+
+.admin-modal-backdrop,
+.admin-confirm-backdrop {
+  animation: admin-backdrop-in 0.2s ease-out both;
+}
+
+.admin-modal,
+.admin-confirm-modal {
+  animation: admin-modal-in 0.25s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell-page:not(.is-visible) .admin-shell > *:not(.admin-modal-backdrop):not(.admin-confirm-backdrop) {
+    opacity: 1;
+  }
+
+  .admin-shell-page.is-visible .admin-shell > *:not(.admin-modal-backdrop):not(.admin-confirm-backdrop),
+  .admin-modal-backdrop,
+  .admin-confirm-backdrop,
+  .admin-modal,
+  .admin-confirm-modal {
+    animation: none;
+  }
+}
+
+.admin-brand {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 280px;
+  height: 38px;
+  gap: 0;
+  margin-bottom: 0;
+}
+
+.admin-brand .brand-logo {
+  width: 110px;
+  height: 38px;
+  object-fit: contain;
+}
+
+.admin-brand-divider {
+  width: 2px;
+  height: 38px;
+  flex: 0 0 auto;
+  margin: 0 14px;
+  border-radius: 999px;
+  background: rgba(245, 245, 245, 0.34);
+}
+
+.admin-brand-title {
+  color: rgba(245, 245, 245, 0.34);
+  font-family: var(--font-nunito), Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  line-height: 1;
+  transform: translateY(2px);
+}
+
+.admin-page-title {
+  margin: 24px 0 0;
+  color: var(--white);
+  font-family: var(--font-nunito), Arial, sans-serif;
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.admin-page-subtitle {
+  margin: 8px 0 48px;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.4;
+}
+
 .admin-panel,
 .finance-panel {
   background: rgba(10, 15, 20, 0.96);
@@ -447,22 +661,79 @@ form.ds-stack {
 
 .admin-topbar,
 .finance-topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 365px);
   align-items: center;
   gap: 12px;
-  justify-content: space-between;
-  padding: 12px 12px 18px;
+  padding: 28px 36px;
+  margin-bottom: 20px;
+  background: rgba(20, 20, 14, 0.9);
+  border: 1px solid var(--yellow);
+  border-radius: 30px;
+}
+
+.admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .date-picker {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 214, 102, 0.8);
+  gap: 9px;
+  width: min(100%, 178px);
+  min-width: 0;
+  justify-self: start;
+  height: 48px;
+  padding: 0 12px;
+  background: #090909;
+  border: 1px solid rgba(125, 125, 125, 0.65);
   border-radius: 14px;
-  padding: 10px 14px;
-  min-height: 48px;
+  overflow: hidden;
+}
+
+.date-picker-label {
+  color: var(--white);
+  font-size: 2.25rem;
+  font-weight: 700;
+}
+
+.date-picker-value {
+  color: var(--white);
+  font-size: 0.9rem;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.date-picker input[type="date"] {
+  position: absolute;
+  inset: 0 68px 0 0;
+  z-index: 1;
+  width: auto;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.date-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 100%;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--yellow);
+  cursor: pointer;
+}
+
+.date-picker-trigger svg {
+  width: 24px;
+  height: 24px;
 }
 
 .date-picker input {
@@ -475,14 +746,26 @@ form.ds-stack {
 }
 
 .action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--yellow);
   border: none;
   color: #13181d;
   font-weight: 800;
   border-radius: 14px;
-  padding: 12px 22px;
-  min-height: 48px;
+  flex: 1 1 0;
+  height: 48px;
+  padding: 6px 12px;
+  line-height: 1.15;
+  white-space: nowrap;
+  font-size: 0.9rem;
   cursor: pointer;
+  text-decoration: none;
+}
+
+.action-button-profit {
+  background: #2ad189;
 }
 
 .data-grid {
@@ -500,13 +783,425 @@ form.ds-stack {
 }
 
 .data-grid th {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(20, 20, 14, 0.9);
   color: var(--white);
   font-weight: 700;
+  text-align: center;
+  border-bottom: 1px solid var(--yellow);
 }
 
 .data-grid td {
   color: rgba(255, 255, 255, 0.88);
+  text-align: center;
+}
+
+.data-grid-row-clickable {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.data-grid-row-clickable:hover,
+.data-grid-row-clickable:focus-visible {
+  background: rgba(245, 183, 46, 0.1);
+  outline: none;
+}
+
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.admin-modal {
+  width: min(100%, 520px);
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 24px;
+  color: var(--white);
+  background: #10171d;
+  border: 1px solid var(--yellow);
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.admin-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.admin-modal-kicker {
+  color: rgba(245, 245, 245, 0.34);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.admin-modal h2 {
+  margin: 4px 0 0;
+  font-size: 1.65rem;
+  line-height: 1.1;
+}
+
+.admin-modal-close {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--white);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.admin-modal-details {
+  display: grid;
+  gap: 5px;
+  margin: 20px 0;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.admin-modal-details span {
+  color: var(--muted);
+}
+
+.admin-whatsapp-button,
+.admin-modal-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  min-height: 44px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-whatsapp-button {
+  background: #25d366;
+  color: #08120d;
+}
+
+.admin-whatsapp-button svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+
+.admin-action-choice {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 18px 0 14px;
+}
+
+.admin-action-choice button {
+  min-height: 42px;
+  border: 1px solid rgba(255, 214, 102, 0.7);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--white);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-action-choice button.is-active {
+  background: var(--yellow);
+  color: #13181d;
+}
+
+.admin-action-choice button.is-cancel-action {
+  background: #e5484d;
+  border-color: #e5484d;
+  color: #ffffff;
+}
+
+.admin-action-choice button.is-postpone-action {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: #13181d;
+}
+
+.admin-modal-field {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+  color: var(--white);
+  font-weight: 700;
+}
+
+.admin-modal-field input,
+.admin-modal-field textarea {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(245, 245, 245, 0.98);
+  color: #111827;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.admin-modal-field textarea {
+  resize: vertical;
+}
+
+.admin-reschedule-picker {
+  position: relative;
+}
+
+.admin-reschedule-picker button {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  background: rgba(245, 245, 245, 0.98);
+  color: #6b7280;
+  font-size: 1rem;
+  font-weight: 400;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-reschedule-picker button.has-value {
+  color: #111827;
+}
+
+.admin-reschedule-picker input[type="date"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.admin-slot-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.admin-slot-options button {
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 214, 102, 0.7);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--white);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-slot-options button.is-selected {
+  background: var(--yellow);
+  color: #13181d;
+}
+
+.admin-slot-options span {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.admin-slot-options span.admin-slot-message-error {
+  color: #ff6b6b;
+}
+
+.admin-modal-submit {
+  margin-top: 18px;
+  font-size: 1rem;
+}
+
+.schedule-block-modal {
+  max-width: 560px;
+}
+
+.schedule-block-types {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 20px 0 4px;
+}
+
+.schedule-block-types button {
+  min-height: 38px;
+  padding: 6px;
+  border: 1px solid rgba(255, 214, 102, 0.65);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--white);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.schedule-block-types button.is-selected {
+  background: var(--yellow);
+  color: #13181d;
+}
+
+.schedule-block-date-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.admin-modal-field select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  background: rgba(245, 245, 245, 0.98);
+  color: #111827;
+  padding: 10px 12px;
+}
+
+.schedule-block-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.schedule-block-list h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.schedule-block-list > span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.schedule-block-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.schedule-block-item div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.schedule-block-item span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+}
+
+.schedule-block-item > button {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(229, 72, 77, 0.18);
+  color: #ff6b6b;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.admin-cancel-submit {
+  background: #e5484d;
+  color: #ffffff;
+}
+
+.admin-cancel-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.admin-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.76);
+}
+
+.admin-confirm-modal {
+  position: relative;
+  width: min(100%, 420px);
+  padding: 24px;
+  background: #10171d;
+  border: 1px solid #e5484d;
+  border-radius: 16px;
+  color: var(--white);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+
+.admin-confirm-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--white);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.admin-confirm-modal h2 {
+  margin: 0;
+  padding-right: 42px;
+  font-size: 1.3rem;
+  line-height: 1.25;
+}
+
+.admin-confirm-modal p {
+  margin: 4px 0 20px;
+  color: #ff6b6b;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.admin-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.admin-confirm-actions button {
+  min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--white);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-confirm-actions button.admin-cancel-submit {
+  border-color: #e5484d;
 }
 
 .total-box {
@@ -577,5 +1272,51 @@ form.ds-stack {
   .admin-shell,
   .finance-shell {
     width: min(100%, 920px);
+  }
+}
+
+@media (max-width: 767px) {
+  .admin-brand {
+    margin-bottom: 20px;
+  }
+
+  .admin-brand .brand-logo {
+    width: 110px;
+    height: 38px;
+  }
+
+  .admin-topbar {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 20px;
+  }
+
+  .date-picker,
+  .admin-actions,
+  .action-button {
+    width: 100%;
+  }
+
+  .date-picker {
+    justify-content: space-between;
+    min-width: 0;
+  }
+
+  .date-picker-label {
+    font-size: 1.5rem;
+  }
+
+  .date-picker-value {
+    font-size: 0.9rem;
+  }
+
+  .date-picker-trigger svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .admin-actions {
+    flex-direction: column;
   }
 }

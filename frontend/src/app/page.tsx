@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getServicos, getSlots, criarAgendamento } from '@/services/api';
+import { getDiasDisponiveis, getServicos, getSlots, criarAgendamento } from '@/services/api';
 import { Servico, Slot } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
 
@@ -24,6 +24,14 @@ function formatSlotForDisplay(horario: string) {
   return `${formatarHora(inicioMinutos)} as ${formatarHora(fimMinutos)}`;
 }
 
+function formatLocalDate(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function getCalendarMonth(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export default function Home() {
   const [servicos, setServicos] = useState<Servico[]>([]);
   const [selectedServico, setSelectedServico] = useState('');
@@ -40,8 +48,11 @@ export default function Home() {
   const [erro, setErro] = useState('');
   const [showSucesso, setShowSucesso] = useState(false);
   const [telaVisivel, setTelaVisivel] = useState(false);
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(getCalendarMonth(new Date()));
+  const [diasDisponiveis, setDiasDisponiveis] = useState<string[]>([]);
+  const [loadingCalendar, setLoadingCalendar] = useState(false);
   const servicoSelectRef = useRef<HTMLSelectElement | null>(null);
-  const dataInputRef = useRef<HTMLInputElement | null>(null);
   const slotSelectRef = useRef<HTMLSelectElement | null>(null);
 
   useEffect(() => {
@@ -59,6 +70,22 @@ export default function Home() {
 
     element.focus();
     element.click();
+  };
+
+  const calendarDateParts = calendarMonth.split('-').map(Number);
+  const calendarYear = calendarDateParts[0];
+  const calendarMonthNumber = calendarDateParts[1];
+  const calendarDaysInMonth = new Date(calendarYear, calendarMonthNumber, 0).getDate();
+  const calendarStartDay = new Date(calendarYear, calendarMonthNumber - 1, 1).getDay();
+  const today = formatLocalDate(new Date());
+  const calendarCells = [
+    ...Array.from({ length: calendarStartDay }, () => null),
+    ...Array.from({ length: calendarDaysInMonth }, (_, index) => `${calendarYear}-${String(calendarMonthNumber).padStart(2, '0')}-${String(index + 1).padStart(2, '0')}`),
+  ];
+
+  const changeCalendarMonth = (offset: number) => {
+    const next = new Date(calendarYear, calendarMonthNumber - 1 + offset, 1);
+    setCalendarMonth(getCalendarMonth(next));
   };
 
   const servicosOrdenados = useMemo(() => {
@@ -121,6 +148,14 @@ export default function Home() {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    setLoadingCalendar(true);
+    getDiasDisponiveis(calendarMonth, selectedServico || undefined)
+      .then(setDiasDisponiveis)
+      .catch(() => setDiasDisponiveis([]))
+      .finally(() => setLoadingCalendar(false));
+  }, [calendarMonth, selectedServico]);
 
   useEffect(() => {
     if (!selectedServico || !selectedDate) return;
@@ -235,27 +270,49 @@ export default function Home() {
                 <span className={`date-field-value${selectedDate ? '' : ' field-placeholder'}`}>
                   {selectedDate ? formatDateForDisplay(selectedDate) : 'Selecionar data'}
                 </span>
-                <input
-                  ref={dataInputRef}
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => {
-                    setSelectedDate(e.target.value);
-                    e.currentTarget.blur();
-                  }}
-                  aria-label="Escolha a data"
-                  onClick={() => abrirListaSelect(dataInputRef.current)}
-                />
                 <button
                   type="button"
                   className="ds-select-trigger"
-                  onClick={() => abrirListaSelect(dataInputRef.current)}
+                  onClick={() => setShowCalendar((current) => !current)}
                   aria-label="Abrir calendário"
                 >
                   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                     <path d="M7 3.75V6.5M17 3.75V6.5M4.75 9.25H19.25M6.5 5.25H17.5C18.7426 5.25 19.75 6.25736 19.75 7.5V17.5C19.75 18.7426 18.7426 19.75 17.5 19.75H6.5C5.25736 19.75 4.25 18.7426 4.25 17.5V7.5C4.25 6.25736 5.25736 5.25 6.5 5.25Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
                   </svg>
                 </button>
+                {showCalendar && (
+                  <div className="booking-calendar" role="dialog" aria-label="Selecionar data" onClick={(event) => event.stopPropagation()}>
+                    <div className="booking-calendar-header">
+                      <button type="button" onClick={() => changeCalendarMonth(-1)} aria-label="Mês anterior">‹</button>
+                      <strong>{new Date(calendarYear, calendarMonthNumber - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</strong>
+                      <button type="button" onClick={() => changeCalendarMonth(1)} aria-label="Próximo mês">›</button>
+                    </div>
+                    <div className="booking-calendar-weekdays">
+                      {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}
+                    </div>
+                    <div className="booking-calendar-grid">
+                      {calendarCells.map((date, index) => {
+                        const habilitada = Boolean(date && date >= today && diasDisponiveis.includes(date));
+                        return date ? (
+                          <button
+                            type="button"
+                            key={date}
+                            className={selectedDate === date ? 'is-selected' : ''}
+                            disabled={loadingCalendar || !habilitada}
+                            onClick={() => {
+                              if (!habilitada) return;
+                              setSelectedDate(date);
+                              setShowCalendar(false);
+                            }}
+                          >
+                            {Number(date.slice(-2))}
+                          </button>
+                        ) : <span key={`empty-${index}`} />;
+                      })}
+                    </div>
+                    {loadingCalendar && <small>Verificando disponibilidade...</small>}
+                  </div>
+                )}
               </div>
             </div>
 

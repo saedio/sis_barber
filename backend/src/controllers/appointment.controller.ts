@@ -23,6 +23,19 @@ export class AppointmentController {
     }
   }
 
+  async getAvailableDates(req: Request, res: Response) {
+    try {
+      const { month, servicoId } = req.query;
+      if (!month || !/^\d{4}-\d{2}$/.test(month as string)) {
+        return res.status(400).json({ error: 'month deve estar no formato YYYY-MM.' });
+      }
+
+      return res.json(await slotService.getAvailableDates(month as string, servicoId as string | undefined));
+    } catch (error: any) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
   async create(req: Request, res: Response) {
     try {
       const { clienteNome, clienteTelefone, servicoId, dataHoraInicio } = req.body;
@@ -58,6 +71,36 @@ export class AppointmentController {
       return res.json(agendamentos);
     } catch (error: any) {
       return res.status(500).json({ error: error.message });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+      const { action, reason, newDataHoraInicio } = req.body;
+
+      if (!id || !action || !reason) {
+        return res.status(400).json({ error: 'id, action e reason são obrigatórios.' });
+      }
+
+      if (action !== 'cancelar' && action !== 'adiar') {
+        return res.status(400).json({ error: 'A ação deve ser cancelar ou adiar.' });
+      }
+
+      if (action === 'adiar' && !newDataHoraInicio) {
+        return res.status(400).json({ error: 'A nova data e horário são obrigatórios para adiar.' });
+      }
+
+      const agendamento = await slotService.updateAppointment({
+        id,
+        action,
+        reason,
+        newDataHoraInicio,
+      });
+
+      return res.json(agendamento);
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
     }
   }
 }
