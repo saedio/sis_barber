@@ -1,4 +1,4 @@
-import { Servico, Slot, AgendamentoInput, Agendamento, BloqueioAgenda } from '../types';
+import { Servico, Slot, AgendamentoInput, Agendamento, BloqueioAgenda, LancamentoFaturamento } from '../types';
 
 const API_BASE_URL = 'http://localhost:3000';
 
@@ -77,6 +77,16 @@ export async function criarBloqueio(data: {
 export async function removerBloqueio(id: string): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/bloqueios/${id}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Erro ao remover bloqueio.');
+}
+
+export async function getFaturamento(inicio: string, fim: string): Promise<LancamentoFaturamento[]> {
+  const query = new URLSearchParams({ inicio, fim });
+  const res = await fetch(`${API_BASE_URL}/faturamento?${query.toString()}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error || 'Erro ao buscar o faturamento.');
+  }
+  return res.json();
 }
 
 export async function getDiasDisponiveis(month: string, servicoId?: string): Promise<string[]> {

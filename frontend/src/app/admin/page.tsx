@@ -24,6 +24,12 @@ function formatAdminDate(value: string) {
   return `${day}/${month}/${year}`;
 }
 
+/** O motivo fica na observacao com o prefixo "Cancelamento: ", que é redundante na tela. */
+function formatMotivoCancelamento(observacao?: string | null) {
+  if (!observacao?.trim()) return 'Motivo não informado.';
+  return observacao.replace(/^Cancelamento:\s*/, '');
+}
+
 function formatSlotForDisplay(horario: string) {
   const [hours, minutes] = horario.split(':').map(Number);
   const inicio = hours * 60 + minutes;
@@ -336,23 +342,30 @@ export default function AdminPage() {
                     </td>
                   </tr>
                 ) : (
-                  agendamentos.map((agendamento) => (
-                    <tr
-                      key={agendamento.id}
-                      className="data-grid-row-clickable"
-                      onClick={() => abrirDetalhes(agendamento)}
-                      tabIndex={0}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') abrirDetalhes(agendamento);
-                      }}
-                    >
-                      <td>{agendamento.cliente_nome}</td>
-                      <td>{agendamento.servico_nome}</td>
-                      <td>{formatTime(agendamento.data_hora_inicio)}</td>
-                      <td>{formatTime(agendamento.data_hora_fim)}</td>
-                      <td>{formatCurrency(agendamento.preco_centavos)}</td>
-                    </tr>
-                  ))
+                  agendamentos.map((agendamento) => {
+                    const cancelado = agendamento.status === 'cancelado';
+
+                    return (
+                      <tr
+                        key={agendamento.id}
+                        className={`data-grid-row-clickable${cancelado ? ' is-inativo' : ''}`}
+                        onClick={() => abrirDetalhes(agendamento)}
+                        tabIndex={0}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') abrirDetalhes(agendamento);
+                        }}
+                      >
+                        <td>
+                          {agendamento.cliente_nome}
+                          {cancelado && <span className="status-badge">Cancelado</span>}
+                        </td>
+                        <td>{agendamento.servico_nome}</td>
+                        <td>{formatTime(agendamento.data_hora_inicio)}</td>
+                        <td>{formatTime(agendamento.data_hora_fim)}</td>
+                        <td>{formatCurrency(agendamento.preco_centavos)}</td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -461,7 +474,9 @@ export default function AdminPage() {
             <section className="admin-modal" role="dialog" aria-modal="true" aria-labelledby="detalhes-agendamento" onClick={(event) => event.stopPropagation()}>
               <div className="admin-modal-header">
                 <div>
-                  <span className="admin-modal-kicker">Agendamento</span>
+                  <span className="admin-modal-kicker">
+                    {agendamentoSelecionado.status === 'cancelado' ? 'Reserva inativada' : 'Agendamento'}
+                  </span>
                   <h2 id="detalhes-agendamento">Detalhes do agendamento</h2>
                 </div>
                 <button type="button" className="admin-modal-close" onClick={fecharDetalhes} aria-label="Fechar detalhes">
@@ -469,10 +484,16 @@ export default function AdminPage() {
                 </button>
               </div>
 
-              <div className="admin-modal-details">
+              <div className={`admin-modal-details${agendamentoSelecionado.status === 'cancelado' ? ' is-inativo' : ''}`}>
                 <strong>{agendamentoSelecionado.cliente_nome}</strong>
                 <span>{agendamentoSelecionado.servico_nome}</span>
                 <span>{formatTime(agendamentoSelecionado.data_hora_inicio)} às {formatTime(agendamentoSelecionado.data_hora_fim)}</span>
+                {agendamentoSelecionado.status === 'cancelado' && (
+                  <span className="admin-modal-motivo">
+                    <span className="status-badge">Cancelado</span>
+                    {formatMotivoCancelamento(agendamentoSelecionado.observacao)}
+                  </span>
+                )}
               </div>
 
               <button type="button" className="admin-whatsapp-button" onClick={() => abrirWhatsApp()}>
@@ -483,22 +504,25 @@ export default function AdminPage() {
                 Falar com cliente via WhatsApp
               </button>
 
-              <div className="admin-action-choice" role="group" aria-label="Ação do agendamento">
-                <button
-                  type="button"
-                  className={`is-cancel-action${acao === 'cancelar' ? ' is-active' : ''}`}
-                  onClick={() => {
-                    setAcao('cancelar');
-                    setMotivo('');
-                    setConfirmarCancelamento(true);
-                  }}
-                >
-                  Cancelar
-                </button>
-                <button type="button" className={`is-postpone-action${acao === 'adiar' ? ' is-active' : ''}`} onClick={() => setAcao('adiar')}>
-                  Adiar
-                </button>
-              </div>
+              {/* Reserva inativada é somente leitura: cancelar ou adiar não fazem sentido. */}
+              {agendamentoSelecionado.status !== 'cancelado' && (
+                <div className="admin-action-choice" role="group" aria-label="Ação do agendamento">
+                  <button
+                    type="button"
+                    className={`is-cancel-action${acao === 'cancelar' ? ' is-active' : ''}`}
+                    onClick={() => {
+                      setAcao('cancelar');
+                      setMotivo('');
+                      setConfirmarCancelamento(true);
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  <button type="button" className={`is-postpone-action${acao === 'adiar' ? ' is-active' : ''}`} onClick={() => setAcao('adiar')}>
+                    Adiar
+                  </button>
+                </div>
+              )}
 
               {acao === 'adiar' && (
                 <div className="admin-modal-field">

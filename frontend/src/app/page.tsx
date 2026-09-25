@@ -54,11 +54,36 @@ export default function Home() {
   const [loadingCalendar, setLoadingCalendar] = useState(false);
   const servicoSelectRef = useRef<HTMLSelectElement | null>(null);
   const slotSelectRef = useRef<HTMLSelectElement | null>(null);
+  const dateFieldRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setTelaVisivel(true));
     return () => cancelAnimationFrame(frame);
   }, []);
+
+  // Fecha o calendário ao clicar fora dele ou ao pressionar Esc.
+  useEffect(() => {
+    if (!showCalendar) return;
+
+    const fecharSeForaDoCampo = (event: MouseEvent | TouchEvent) => {
+      if (dateFieldRef.current?.contains(event.target as Node)) return;
+      setShowCalendar(false);
+    };
+
+    const fecharComEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowCalendar(false);
+    };
+
+    document.addEventListener('mousedown', fecharSeForaDoCampo);
+    document.addEventListener('touchstart', fecharSeForaDoCampo);
+    document.addEventListener('keydown', fecharComEsc);
+
+    return () => {
+      document.removeEventListener('mousedown', fecharSeForaDoCampo);
+      document.removeEventListener('touchstart', fecharSeForaDoCampo);
+      document.removeEventListener('keydown', fecharComEsc);
+    };
+  }, [showCalendar]);
 
   const abrirListaSelect = (element: HTMLSelectElement | HTMLInputElement | null) => {
     if (!element) return;
@@ -266,7 +291,7 @@ export default function Home() {
               <label className="ds-label">
                 2. Escolha a data:
               </label>
-              <div className="ds-field ds-field-date ds-field-select">
+              <div className="ds-field ds-field-date ds-field-select" ref={dateFieldRef}>
                 <span className={`date-field-value${selectedDate ? '' : ' field-placeholder'}`}>
                   {selectedDate ? formatDateForDisplay(selectedDate) : 'Selecionar data'}
                 </span>
@@ -281,7 +306,7 @@ export default function Home() {
                   </svg>
                 </button>
                 {showCalendar && (
-                  <div className="booking-calendar" role="dialog" aria-label="Selecionar data" onClick={(event) => event.stopPropagation()}>
+                  <div className="booking-calendar" role="dialog" aria-label="Selecionar data">
                     <div className="booking-calendar-header">
                       <button type="button" onClick={() => changeCalendarMonth(-1)} aria-label="Mês anterior">‹</button>
                       <strong>{new Date(calendarYear, calendarMonthNumber - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</strong>

@@ -30,6 +30,16 @@ export interface Agendamento {
   observacao?: string | null;
 }
 
+export interface LancamentoFaturamento {
+  id: string;
+  data_hora_inicio: string;
+  data_hora_fim: string;
+  cliente_nome: string;
+  cliente_telefone: string;
+  servico_nome: string;
+  preco_centavos: number;
+}
+
 export interface BloqueioAgenda {
   id: string;
   data_inicio: string | null;

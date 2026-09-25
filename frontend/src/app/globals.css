@@ -100,10 +100,13 @@ textarea {
   opacity: 0;
 }
 
+/* backwards (e nao both): o fill-mode both mantem o transform aplicado apos a
+   animacao, criando um stacking context que prende o calendario atras dos
+   campos seguintes. Com backwards o transform some ao fim da entrada. */
 .barbezap-shell.is-visible .brand-row,
 .barbezap-shell.is-visible form.ds-stack > *,
 .barbezap-shell.is-visible > .barbezap-container > .modal-backdrop {
-  animation: booking-item-in 0.5s ease-out both;
+  animation: booking-item-in 0.5s ease-out backwards;
 }
 
 .barbezap-shell.is-visible .brand-row {
@@ -806,6 +809,60 @@ form.ds-stack {
   outline: none;
 }
 
+/* Reserva inativada: cancelada no admin ou excluida do faturamento. */
+.data-grid-row-clickable.is-inativo td {
+  color: rgba(255, 255, 255, 0.38);
+  text-decoration: line-through;
+}
+
+.data-grid-row-clickable.is-inativo:hover,
+.data-grid-row-clickable.is-inativo:focus-visible {
+  background: rgba(229, 72, 77, 0.1);
+}
+
+.status-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border: 1px solid #e5484d;
+  border-radius: 999px;
+  color: #ff6b6b;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.data-grid-row-clickable.is-inativo .status-badge {
+  display: block;
+  width: fit-content;
+  margin-inline: auto;
+}
+
+.admin-modal-details.is-inativo strong,
+.admin-modal-details.is-inativo > span:not(.admin-modal-motivo) {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+.admin-modal-motivo .status-badge {
+  justify-self: start;
+  margin-top: 0;
+}
+
+.admin-modal-motivo {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--white) !important;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
 .admin-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -1260,6 +1317,178 @@ form.ds-stack {
   line-height: 1.4;
 }
 
+/* -----------------------------------------------------------------------------
+   PAINEL FINANCEIRO
+   Navegacao de mes centralizada (mobile first). Sobrescreve o grid herdado de
+   .admin-topbar, que tem duas colunas por causa do date-picker + acoes.
+   -------------------------------------------------------------------------- */
+.finance-topbar {
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  justify-items: center;
+  gap: 10px;
+  padding: 16px 14px;
+  margin: 24px 0 18px;
+}
+
+.finance-month-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--white);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.finance-month-nav:hover {
+  background: rgba(255, 214, 102, 0.2);
+}
+
+.finance-month-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: min(100%, 220px);
+  height: 48px;
+  padding: 0 14px;
+  background: #090909;
+  border: 1px solid rgba(125, 125, 125, 0.65);
+  border-radius: 14px;
+  color: var(--white);
+  font-family: var(--font-nunito), Arial, sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.finance-month-pill span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.finance-month-pill svg {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  color: var(--yellow);
+}
+
+.finance-year-nav {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  margin-top: 20px;
+  text-align: center;
+}
+
+.finance-year-nav strong {
+  color: var(--white);
+  font-size: 1.1rem;
+}
+
+.finance-year-nav button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--white);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.finance-month-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.finance-month-options button {
+  min-height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--white);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.finance-month-options button:hover {
+  border-color: var(--yellow);
+}
+
+.finance-month-options button.is-selected {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: #13181d;
+}
+
+.finance-filter-presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.finance-filter-presets button {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--white);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.finance-filter-presets button:hover {
+  border-color: var(--yellow);
+}
+
+.finance-filter-presets button.is-selected {
+  background: var(--yellow);
+  border-color: var(--yellow);
+  color: #13181d;
+}
+
+.finance-range-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.finance-range-fields .admin-modal-field {
+  margin-top: 18px;
+}
+
+.finance-filter-hint {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.finance-detail-value {
+  color: var(--yellow) !important;
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.finance-panel .admin-modal-submit,
+.finance-shell .admin-modal-submit {
+  margin-top: 18px;
+}
+
 @media (min-width: 768px) {
   .barbezap-shell {
     padding-top: 104px;
@@ -1296,6 +1525,14 @@ form.ds-stack {
   .admin-actions,
   .action-button {
     width: 100%;
+  }
+
+  /* Em coluna, o flex-basis: 0 do .action-button passa a valer para a altura e
+     anula o height, espremendo os botoes. flex: 0 0 auto devolve esse controle. */
+  .action-button {
+    flex: 0 0 auto;
+    height: 40px;
+    font-size: 1rem;
   }
 
   .date-picker {
