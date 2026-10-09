@@ -7,6 +7,7 @@ export interface Servico {
 
 export interface Slot {
   horario: string;
+  duracao_minutos: number;
   disponivel: boolean;
 }
 

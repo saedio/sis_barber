@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getDiasDisponiveis, getServicos, getSlots, criarAgendamento } from '@/services/api';
 import { Servico, Slot } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
+import { getErrorMessage } from '@/utils/errors';
+import Image from 'next/image';
 
 function formatDateForDisplay(dateString: string) {
   const [year, month, day] = dateString.split('-').map(Number);
@@ -11,10 +13,10 @@ function formatDateForDisplay(dateString: string) {
   return value.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function formatSlotForDisplay(horario: string) {
+function formatSlotForDisplay(horario: string, durationMinutes: number) {
   const [hours, minutes] = horario.split(':').map(Number);
   const inicioMinutos = hours * 60 + minutes;
-  const fimMinutos = inicioMinutos === 19 * 60 ? 19 * 60 + 30 : inicioMinutos + 60;
+  const fimMinutos = inicioMinutos + durationMinutes;
   const formatarHora = (totalMinutos: number) => {
     const hora = Math.floor(totalMinutos / 60).toString().padStart(2, '0');
     const minuto = (totalMinutos % 60).toString().padStart(2, '0');
@@ -51,7 +53,7 @@ export default function Home() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(getCalendarMonth(new Date()));
   const [diasDisponiveis, setDiasDisponiveis] = useState<string[]>([]);
-  const [loadingCalendar, setLoadingCalendar] = useState(false);
+  const [loadingCalendar, setLoadingCalendar] = useState(true);
   const servicoSelectRef = useRef<HTMLSelectElement | null>(null);
   const slotSelectRef = useRef<HTMLSelectElement | null>(null);
   const dateFieldRef = useRef<HTMLDivElement | null>(null);
@@ -110,6 +112,7 @@ export default function Home() {
 
   const changeCalendarMonth = (offset: number) => {
     const next = new Date(calendarYear, calendarMonthNumber - 1 + offset, 1);
+    setLoadingCalendar(true);
     setCalendarMonth(getCalendarMonth(next));
   };
 
@@ -137,21 +140,6 @@ export default function Home() {
     ];
   }, [servicos]);
 
-  const abrirListaServicos = (event?: React.MouseEvent) => {
-    event?.preventDefault();
-
-    const select = servicoSelectRef.current;
-    if (!select) return;
-
-    if (typeof select.showPicker === 'function') {
-      select.showPicker();
-      return;
-    }
-
-    select.focus();
-    select.click();
-  };
-
   useEffect(() => {
     let mounted = true;
 
@@ -175,7 +163,6 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    setLoadingCalendar(true);
     getDiasDisponiveis(calendarMonth, selectedServico || undefined)
       .then(setDiasDisponiveis)
       .catch(() => setDiasDisponiveis([]))
@@ -184,10 +171,6 @@ export default function Home() {
 
   useEffect(() => {
     if (!selectedServico || !selectedDate) return;
-
-    setLoadingSlots(true);
-    setSelectedSlot('');
-    setErro('');
 
     getSlots(selectedDate, selectedServico)
       .then((data) => setSlots(data))
@@ -225,8 +208,8 @@ export default function Home() {
       setSelectedSlot('');
       const slotsAtualizados = await getSlots(selectedDate, selectedServico);
       setSlots(slotsAtualizados);
-    } catch (err: any) {
-      setErro(err.message || 'Erro ao realizar agendamento.');
+    } catch (err: unknown) {
+      setErro(getErrorMessage(err, 'Erro ao realizar agendamento.'));
     } finally {
       setSubmitting(false);
     }
@@ -236,7 +219,7 @@ export default function Home() {
     <main className={`barbezap-shell${telaVisivel ? ' is-visible' : ''}`}>
       <div className="barbezap-container">
         <div className="brand-row">
-          <img src="/logo-white.svg" alt="BarbeZap" className="brand-logo brand-logo--white" />
+          <Image src="/logo-white.svg" alt="BarbeZap" className="brand-logo brand-logo--white" width={160} height={40} priority />
         </div>
 
         {!showSucesso ? (
@@ -260,6 +243,10 @@ export default function Home() {
                       className={selectedServico ? '' : 'field-placeholder'}
                       value={selectedServico}
                       onChange={(e) => {
+                        setLoadingCalendar(true);
+                        setLoadingSlots(Boolean(selectedDate && e.target.value));
+                        setSelectedSlot('');
+                        setSlots([]);
                         setSelectedServico(e.target.value);
                         e.currentTarget.blur();
                       }}
@@ -326,6 +313,9 @@ export default function Home() {
                             disabled={loadingCalendar || !habilitada}
                             onClick={() => {
                               if (!habilitada) return;
+                              setLoadingSlots(Boolean(selectedServico));
+                              setSelectedSlot('');
+                              setSlots([]);
                               setSelectedDate(date);
                               setShowCalendar(false);
                             }}
@@ -365,7 +355,7 @@ export default function Home() {
                         .filter((slot) => slot.disponivel)
                         .map((slot) => (
                           <option key={slot.horario} value={slot.horario}>
-                            {formatSlotForDisplay(slot.horario)}
+                            {formatSlotForDisplay(slot.horario, servicoSelecionado?.duracao_minutos ?? slot.duracao_minutos)}
                           </option>
                         ))}
                     </select>

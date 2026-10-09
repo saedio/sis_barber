@@ -5,6 +5,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { atualizarAgendamento, getFaturamento } from '@/services/api';
 import { LancamentoFaturamento } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
+import AdminAuthGate from '@/components/admin-auth-gate';
+import { getErrorMessage } from '@/utils/errors';
+import Image from 'next/image';
 
 const MOTIVO_PADRAO = 'Cliente não compareceu / não pagou';
 
@@ -133,13 +136,17 @@ export default function FinanceiroPage() {
   const [rascunhoFim, setRascunhoFim] = useState('');
   const [erroFiltro, setErroFiltro] = useState('');
 
-  const carregarFaturamento = useCallback(async (inicio: string, fim: string) => {
+  const atualizarPeriodo = (next: Periodo | ((current: Periodo) => Periodo)) => {
     setCarregando(true);
     setErro('');
+    setPeriodo(next);
+  };
+
+  const carregarFaturamento = useCallback(async (inicio: string, fim: string) => {
     try {
       setLancamentos(await getFaturamento(inicio, fim));
-    } catch (err: any) {
-      setErro(err.message || 'Erro ao buscar o faturamento.');
+    } catch (err: unknown) {
+      setErro(getErrorMessage(err, 'Erro ao buscar o faturamento.'));
       setLancamentos([]);
     } finally {
       setCarregando(false);
@@ -147,8 +154,24 @@ export default function FinanceiroPage() {
   }, []);
 
   useEffect(() => {
-    carregarFaturamento(periodo.inicio, periodo.fim);
-  }, [periodo.inicio, periodo.fim, carregarFaturamento]);
+    let active = true;
+    getFaturamento(periodo.inicio, periodo.fim)
+      .then((data) => {
+        if (active) setLancamentos(data);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setErro(getErrorMessage(error, 'Erro ao buscar o faturamento.'));
+        setLancamentos([]);
+      })
+      .finally(() => {
+        if (active) setCarregando(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [periodo.inicio, periodo.fim]);
 
   const total = useMemo(
     () => lancamentos.reduce((soma, item) => soma + item.preco_centavos, 0),
@@ -157,7 +180,7 @@ export default function FinanceiroPage() {
 
   /** As setas deslocam o período pelo tamanho do filtro ativo. */
   const deslocar = (direcao: number) => {
-    setPeriodo((atual) => {
+      atualizarPeriodo((atual) => {
       if (atual.tipo === 'dia') {
         const dia = addDays(atual.inicio, direcao);
         return { ...atual, inicio: dia, fim: dia };
@@ -200,17 +223,17 @@ export default function FinanceiroPage() {
       // Mantém as datas atuais e só troca o modo, para o barbeiro ajustar nos campos.
       setRascunhoInicio(periodo.inicio);
       setRascunhoFim(periodo.fim);
-      setPeriodo((atual) => ({ ...atual, tipo: 'periodo' }));
+      atualizarPeriodo((atual) => ({ ...atual, tipo: 'periodo' }));
       return;
     }
 
     if (tipo === 'mes') {
       setAnoSeletor(Number(periodo.inicio.slice(0, 4)));
-      setPeriodo(periodoDoTipo('mes', fromKey(periodo.inicio)));
+      atualizarPeriodo(periodoDoTipo('mes', fromKey(periodo.inicio)));
       return;
     }
 
-    setPeriodo(periodoDoTipo(tipo, new Date()));
+    atualizarPeriodo(periodoDoTipo(tipo, new Date()));
     setFiltroAberto(false);
   };
 
@@ -225,7 +248,7 @@ export default function FinanceiroPage() {
       return;
     }
 
-    setPeriodo({ tipo: 'periodo', inicio: rascunhoInicio, fim: rascunhoFim });
+    atualizarPeriodo({ tipo: 'periodo', inicio: rascunhoInicio, fim: rascunhoFim });
     setFiltroAberto(false);
   };
 
@@ -256,19 +279,21 @@ export default function FinanceiroPage() {
         reason: motivo.trim(),
       });
       fecharDetalhes();
+      setCarregando(true);
       await carregarFaturamento(periodo.inicio, periodo.fim);
-    } catch (err: any) {
-      setErroModal(err.message || 'Não foi possível excluir o lançamento.');
+    } catch (err: unknown) {
+      setErroModal(getErrorMessage(err, 'Não foi possível excluir o lançamento.'));
     } finally {
       setExcluindo(false);
     }
   };
 
   return (
+    <AdminAuthGate>
     <main className="barbezap-shell">
       <div className="finance-shell">
         <div className="admin-brand">
-          <img src="/logo-white.svg" alt="BarbeZap" className="brand-logo brand-logo--white" />
+          <Image src="/logo-white.svg" alt="BarbeZap" className="brand-logo brand-logo--white" width={160} height={40} priority />
           <span className="admin-brand-divider" aria-hidden="true" />
           <span className="admin-brand-title">ADMIN</span>
         </div>
@@ -410,7 +435,7 @@ export default function FinanceiroPage() {
                           key={`${anoSeletor}-${nome}`}
                           className={ativo ? 'is-selected' : ''}
                           onClick={() => {
-                            setPeriodo(periodoDoTipo('mes', new Date(anoSeletor, index, 1)));
+                            atualizarPeriodo(periodoDoTipo('mes', new Date(anoSeletor, index, 1)));
                             setFiltroAberto(false);
                           }}
                         >
@@ -547,5 +572,6 @@ export default function FinanceiroPage() {
         )}
       </div>
     </main>
+    </AdminAuthGate>
   );
 }

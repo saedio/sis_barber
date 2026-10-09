@@ -1,7 +1,14 @@
 import { Request, Response } from 'express';
-import { SlotService } from '../services/slot.service';
+import { SlotService, SlotServiceError } from '../services/slot.service';
 
 const slotService = new SlotService();
+
+function sendError(res: Response, error: unknown, fallback: string) {
+  if (error instanceof SlotServiceError) {
+    return res.status(error.statusCode).json({ error: error.message });
+  }
+  return res.status(500).json({ error: fallback });
+}
 
 export class AppointmentController {
   async getSlots(req: Request, res: Response) {
@@ -18,8 +25,8 @@ export class AppointmentController {
       );
 
       return res.json(slots);
-    } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+    } catch (error) {
+      return sendError(res, error, 'Não foi possível consultar os horários.');
     }
   }
 
@@ -31,8 +38,8 @@ export class AppointmentController {
       }
 
       return res.json(await slotService.getAvailableDates(month as string, servicoId as string | undefined));
-    } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+    } catch (error) {
+      return sendError(res, error, 'Não foi possível consultar as datas disponíveis.');
     }
   }
 
@@ -54,8 +61,8 @@ export class AppointmentController {
       });
 
       return res.status(201).json(agendamento);
-    } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+    } catch (error) {
+      return sendError(res, error, 'Não foi possível criar o agendamento.');
     }
   }
 
@@ -69,8 +76,8 @@ export class AppointmentController {
 
       const agendamentos = await slotService.getAppointmentsByDate(data as string);
       return res.json(agendamentos);
-    } catch (error: any) {
-      return res.status(500).json({ error: error.message });
+    } catch (error) {
+      return sendError(res, error, 'Não foi possível consultar os agendamentos.');
     }
   }
 
@@ -99,8 +106,8 @@ export class AppointmentController {
       });
 
       return res.json(agendamento);
-    } catch (error: any) {
-      return res.status(400).json({ error: error.message });
+    } catch (error) {
+      return sendError(res, error, 'Não foi possível atualizar o agendamento.');
     }
   }
 }

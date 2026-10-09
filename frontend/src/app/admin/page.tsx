@@ -1,10 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { atualizarAgendamento, criarBloqueio, getAgendamentosPorData, getBloqueios, getSlots, removerBloqueio } from '@/services/api';
 import { Agendamento, BloqueioAgenda, Slot } from '@/types';
 import { formatCurrency } from '@/utils/formatters';
+import AdminAuthGate from '@/components/admin-auth-gate';
+import { getErrorMessage } from '@/utils/errors';
+import Image from 'next/image';
 
 function formatDateInput(date: Date) {
   return date.toISOString().split('T')[0];
@@ -30,10 +33,10 @@ function formatMotivoCancelamento(observacao?: string | null) {
   return observacao.replace(/^Cancelamento:\s*/, '');
 }
 
-function formatSlotForDisplay(horario: string) {
+function formatSlotForDisplay(horario: string, durationMinutes = 60) {
   const [hours, minutes] = horario.split(':').map(Number);
   const inicio = hours * 60 + minutes;
-  const fim = inicio === 19 * 60 ? inicio + 30 : inicio + 60;
+  const fim = inicio + durationMinutes;
   const formatar = (total: number) => `${String(Math.floor(total / 60)).padStart(2, '0')}h${String(total % 60).padStart(2, '0')}`;
   return `${formatar(inicio)} as ${formatar(fim)}`;
 }
@@ -93,8 +96,8 @@ export default function AdminPage() {
     setBloqueioErro('');
     try {
       setBloqueios(await getBloqueios());
-    } catch (err: any) {
-      setBloqueioErro(err.message || 'Não foi possível carregar os bloqueios.');
+    } catch (err: unknown) {
+      setBloqueioErro(getErrorMessage(err, 'Não foi possível carregar os bloqueios.'));
     }
   };
 
@@ -137,8 +140,8 @@ export default function AdminPage() {
       setBloqueioDataFim('');
       setBloqueioHoraInicio('');
       setBloqueioHoraFim('');
-    } catch (err: any) {
-      setBloqueioErro(err.message || 'Não foi possível criar o bloqueio.');
+    } catch (err: unknown) {
+      setBloqueioErro(getErrorMessage(err, 'Não foi possível criar o bloqueio.'));
     } finally {
       setSalvandoBloqueio(false);
     }
@@ -148,8 +151,8 @@ export default function AdminPage() {
     try {
       await removerBloqueio(id);
       setBloqueios((current) => current.filter((bloqueio) => bloqueio.id !== id));
-    } catch (err: any) {
-      setBloqueioErro(err.message || 'Não foi possível remover o bloqueio.');
+    } catch (err: unknown) {
+      setBloqueioErro(getErrorMessage(err, 'Não foi possível remover o bloqueio.'));
     }
   };
 
@@ -185,13 +188,9 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (acao !== 'adiar' || !novaData || !agendamentoSelecionado) {
-      setHorariosDisponiveis([]);
       return;
     }
 
-    setCarregandoHorarios(true);
-    setNovoHorario('');
-    setErroHorarios('');
     getSlots(novaData, agendamentoSelecionado.servico_id)
       .then((slots) => setHorariosDisponiveis(slots.filter((slot) => slot.disponivel)))
       .catch(() => setErroHorarios('Não foi possível carregar os horários disponíveis.'))
@@ -240,13 +239,13 @@ export default function AdminPage() {
       });
       const mensagem = acao === 'cancelar'
         ? `Olá, ${agendamentoSelecionado.cliente_nome}. Seu agendamento de ${agendamentoSelecionado.servico_nome} foi cancelado. Motivo: ${motivo.trim()}.`
-        : `Olá, ${agendamentoSelecionado.cliente_nome}. Seu agendamento de ${agendamentoSelecionado.servico_nome} foi adiado. Novo horário: ${formatAdminDate(novaData)} às ${formatSlotForDisplay(novoHorario)}. Motivo: ${motivo.trim()}.`;
+        : `Olá, ${agendamentoSelecionado.cliente_nome}. Seu agendamento de ${agendamentoSelecionado.servico_nome} foi adiado. Novo horário: ${formatAdminDate(novaData)} às ${formatSlotForDisplay(novoHorario, horariosDisponiveis.find((slot) => slot.horario === novoHorario)?.duracao_minutos)}. Motivo: ${motivo.trim()}.`;
       abrirWhatsApp(mensagem);
       const dadosAtualizados = await getAgendamentosPorData(selectedDate);
       setAgendamentos(dadosAtualizados);
       setAgendamentoSelecionado(null);
-    } catch (err: any) {
-      setErroModal(err.message || 'Não foi possível atualizar o agendamento.');
+    } catch (err: unknown) {
+      setErroModal(getErrorMessage(err, 'Não foi possível atualizar o agendamento.'));
     } finally {
       setSalvandoAcao(false);
     }
@@ -271,16 +270,12 @@ export default function AdminPage() {
     carregar();
   }, [selectedDate]);
 
-  const total = useMemo(
-    () => agendamentos.reduce((acc, item) => acc + Number(item.preco_centavos || 0), 0),
-    [agendamentos]
-  );
-
   return (
+    <AdminAuthGate>
     <main className={`barbezap-shell admin-shell-page${telaVisivel ? ' is-visible' : ''}`}>
       <div className="admin-shell">
         <div className="admin-brand">
-          <img src="/logo-white.svg" alt="BarbeZap" className="brand-logo brand-logo--white" />
+          <Image src="/logo-white.svg" alt="BarbeZap" className="brand-logo brand-logo--white" width={160} height={40} priority />
           <span className="admin-brand-divider" aria-hidden="true" />
           <span className="admin-brand-title">ADMIN</span>
         </div>
@@ -529,13 +524,18 @@ export default function AdminPage() {
                   <span>Nova data e horário</span>
                   <div className="admin-reschedule-picker">
                     <button type="button" className={novaData ? 'has-value' : ''} onClick={abrirNovaData}>
-                      {novaData && novoHorario ? `${formatAdminDate(novaData)} • ${formatSlotForDisplay(novoHorario)}` : 'Selecionar novo dia e horário'}
+                      {novaData && novoHorario ? `${formatAdminDate(novaData)} • ${formatSlotForDisplay(novoHorario, horariosDisponiveis.find((slot) => slot.horario === novoHorario)?.duracao_minutos)}` : 'Selecionar novo dia e horário'}
                     </button>
                     <input
                       ref={novaDataInputRef}
                       type="date"
                       value={novaData}
-                      onChange={(event) => setNovaData(event.target.value)}
+                      onChange={(event) => {
+                        setCarregandoHorarios(Boolean(event.target.value));
+                        setNovoHorario('');
+                        setErroHorarios('');
+                        setNovaData(event.target.value);
+                      }}
                       aria-label="Selecionar novo dia"
                     />
                   </div>
@@ -555,7 +555,7 @@ export default function AdminPage() {
                             className={novoHorario === slot.horario ? 'is-selected' : ''}
                             onClick={() => setNovoHorario(slot.horario)}
                           >
-                            {formatSlotForDisplay(slot.horario)}
+                            {formatSlotForDisplay(slot.horario, slot.duracao_minutos)}
                           </button>
                         ))
                       )}
@@ -609,5 +609,6 @@ export default function AdminPage() {
         )}
       </div>
     </main>
+    </AdminAuthGate>
   );
 }

@@ -1,6 +1,54 @@
 import { Servico, Slot, AgendamentoInput, Agendamento, BloqueioAgenda, LancamentoFaturamento } from '../types';
 
 const API_BASE_URL = 'http://localhost:3000';
+const ADMIN_TOKEN_KEY = 'barbezap-admin-token';
+const ADMIN_AUTH_EVENT = 'barbezap:auth-state-change';
+
+export function getAdminToken() {
+  return typeof window === 'undefined' ? '' : window.sessionStorage.getItem(ADMIN_TOKEN_KEY) || '';
+}
+
+export function setAdminToken(token: string) {
+  window.sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+  window.dispatchEvent(new Event(ADMIN_AUTH_EVENT));
+}
+
+export function clearAdminToken() {
+  window.sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+  window.dispatchEvent(new Event(ADMIN_AUTH_EVENT));
+}
+
+export function subscribeAdminAuth(onChange: () => void) {
+  window.addEventListener(ADMIN_AUTH_EVENT, onChange);
+  return () => window.removeEventListener(ADMIN_AUTH_EVENT, onChange);
+}
+
+export function getAdminAuthSnapshot() {
+  return Boolean(getAdminToken());
+}
+
+export async function loginAdmin(password: string): Promise<string> {
+  const res = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.error || 'Não foi possível entrar no painel.');
+  return body.token as string;
+}
+
+async function adminFetch(path: string, init?: RequestInit) {
+  const token = getAdminToken();
+  const headers = new Headers(init?.headers);
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  if (res.status === 401 && token) {
+    clearAdminToken();
+    window.dispatchEvent(new Event('barbezap:auth-expired'));
+  }
+  return res;
+}
 
 export async function getServicos(): Promise<Servico[]> {
   const res = await fetch(`${API_BASE_URL}/servicos`);
@@ -20,12 +68,15 @@ export async function criarAgendamento(data: AgendamentoInput): Promise<Agendame
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Erro ao criar agendamento');
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new Error(body?.error || 'Erro ao criar agendamento.');
+  }
   return res.json();
 }
 
 export async function getAgendamentosPorData(data: string): Promise<Agendamento[]> {
-  const res = await fetch(`${API_BASE_URL}/agendamentos?data=${data}`);
+  const res = await adminFetch(`/agendamentos?data=${encodeURIComponent(data)}`);
   if (!res.ok) throw new Error('Erro ao buscar agenda');
   return res.json();
 }
@@ -36,7 +87,7 @@ export async function atualizarAgendamento(data: {
   reason: string;
   newDataHoraInicio?: string;
 }): Promise<Agendamento> {
-  const res = await fetch(`${API_BASE_URL}/agendamentos/${data.id}`, {
+  const res = await adminFetch(`/agendamentos/${encodeURIComponent(data.id)}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -51,7 +102,7 @@ export async function atualizarAgendamento(data: {
 }
 
 export async function getBloqueios(): Promise<BloqueioAgenda[]> {
-  const res = await fetch(`${API_BASE_URL}/bloqueios`);
+  const res = await adminFetch('/bloqueios');
   if (!res.ok) throw new Error('Erro ao buscar bloqueios.');
   return res.json();
 }
@@ -64,7 +115,7 @@ export async function criarBloqueio(data: {
   horaFim?: string;
   motivo: string;
 }): Promise<BloqueioAgenda> {
-  const res = await fetch(`${API_BASE_URL}/bloqueios`, {
+  const res = await adminFetch('/bloqueios', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -75,13 +126,13 @@ export async function criarBloqueio(data: {
 }
 
 export async function removerBloqueio(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/bloqueios/${id}`, { method: 'DELETE' });
+  const res = await adminFetch(`/bloqueios/${encodeURIComponent(id)}`, { method: 'DELETE' });
   if (!res.ok) throw new Error('Erro ao remover bloqueio.');
 }
 
 export async function getFaturamento(inicio: string, fim: string): Promise<LancamentoFaturamento[]> {
   const query = new URLSearchParams({ inicio, fim });
-  const res = await fetch(`${API_BASE_URL}/faturamento?${query.toString()}`);
+  const res = await adminFetch(`/faturamento?${query.toString()}`);
   if (!res.ok) {
     const body = await res.json().catch(() => null);
     throw new Error(body?.error || 'Erro ao buscar o faturamento.');

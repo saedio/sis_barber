@@ -1,16 +1,14 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
     container_name: sis_barber_db
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: barbersis123
-      POSTGRES_DB: sis_barber
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD no arquivo backend/.env}
+      POSTGRES_DB: ${DB_NAME:-sis_barber}
     ports:
-      - "5433:5432"
+      - "127.0.0.1:${DB_PORT:-5433}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./database/migrations:/docker-entrypoint-initdb.d:ro

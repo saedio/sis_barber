@@ -1557,3 +1557,99 @@ form.ds-stack {
     flex-direction: column;
   }
 }
+/* Acesso e sessão dos painéis administrativos. */
+.admin-auth-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 24px;
+}
+
+.admin-auth-card {
+  width: min(100%, 420px);
+  padding: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  background: rgba(18, 22, 25, 0.96);
+  color: #f5f7f8;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+}
+
+.admin-auth-card .brand-logo {
+  width: 150px;
+  height: auto;
+  margin-bottom: 24px;
+}
+
+.admin-auth-card h1 {
+  margin: 0 0 8px;
+  font-size: 1.5rem;
+}
+
+.admin-auth-card p {
+  margin: 0 0 24px;
+  color: #aeb7bc;
+}
+
+.admin-auth-card form,
+.admin-auth-card label {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-auth-card form {
+  gap: 16px;
+}
+
+.admin-auth-card input {
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid #455159;
+  border-radius: 10px;
+  background: #101518;
+  color: #fff;
+  font: inherit;
+}
+
+.admin-auth-card button,
+.admin-auth-toolbar button {
+  min-height: 42px;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #c9f31d;
+  color: #14180b;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.admin-auth-card button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.admin-auth-toolbar {
+  position: fixed;
+  z-index: 20;
+  top: 12px;
+  right: 16px;
+}
+
+.admin-auth-toolbar button {
+  min-height: 36px;
+  padding: 7px 12px;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 600px) {
+  .admin-auth-toolbar {
+    top: 8px;
+    right: 8px;
+  }
+
+  .admin-auth-toolbar button {
+    min-height: 32px;
+    padding: 6px 10px;
+  }
+}

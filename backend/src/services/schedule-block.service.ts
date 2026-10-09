@@ -1,4 +1,7 @@
 import { pool } from '../config/database';
+import type { PoolClient } from 'pg';
+
+type QueryExecutor = Pick<PoolClient, 'query'>;
 
 export interface ScheduleBlockInput {
   dataInicio?: string;
@@ -61,8 +64,8 @@ export class ScheduleBlockService {
     return result.rows[0];
   }
 
-  async getBlocksForDate(data: string) {
-    const result = await pool.query(
+  async getBlocksForDate(data: string, executor: QueryExecutor = pool) {
+    const result = await executor.query(
       `SELECT hora_inicio, hora_fim
        FROM bloqueios_agenda
        WHERE ativo = TRUE
