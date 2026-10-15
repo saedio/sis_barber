@@ -17,6 +17,7 @@ Hospede o diretório `backend` em um serviço que mantenha um processo Node.js a
 
 - Diretório raiz: `backend`
 - Comando de instalação: `npm install`
+- Comando de build: `npm run build`
 - Comando de inicialização: `npm start`
 
 Configure no serviço `DATABASE_URL` se o provedor do PostgreSQL fornecer uma URL de conexão. Caso contrário, use `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` e `DB_NAME`. Configure também:
@@ -26,10 +27,12 @@ Configure no serviço `DATABASE_URL` se o provedor do PostgreSQL fornecer uma UR
 - `CORS_ORIGINS`: domínio público da Vercel, por exemplo `https://sis-barber.vercel.app`. Separe origens adicionais por vírgula.
 - `PORT`: normalmente é fornecida automaticamente pelo serviço de hospedagem.
 
-O servidor não cria o banco nem aplica as migrações automaticamente. Crie um banco vazio e aplique, uma única vez, os arquivos em `backend/database/migrations/` na ordem numérica (`001`, `002`, `003`). Não execute as migrações de inicialização sobre um banco que já tenha as tabelas.
+O servidor não cria o banco nem aplica as migrações automaticamente. Crie um banco vazio e aplique, uma única vez, os arquivos em `backend/database/migrations/` na ordem numérica (`001`, `002`, `003`). Não execute as migrações de inicialização sobre um banco que já tenha as tabelas. Antes da primeira aplicação, revise `002_configure_test_data.sql`: ele define horário de funcionamento e preços iniciais dos serviços.
 
 Para desenvolvimento local, copie `backend/.env.example` para `backend/.env` e use `docker compose` a partir do diretório `backend` para iniciar o PostgreSQL local.
 
 ## Segurança
 
 Cadastre senhas e segredos somente no painel de variáveis do serviço correspondente. Não os coloque em `NEXT_PUBLIC_*`, no GitHub, nem no código do front-end. A API permite origens listadas em `CORS_ORIGINS`; mantenha ali apenas os domínios do seu site.
+
+O histórico público do repositório contém um commit antigo com `backend/.env`. Mesmo que o arquivo já tenha sido removido da versão atual, trate quaisquer credenciais reais que já estiveram nele como expostas: troque a senha do banco e a senha administrativa antes de usar produção, e gere um novo `ADMIN_SESSION_SECRET`.
