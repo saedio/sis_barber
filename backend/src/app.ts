@@ -6,6 +6,7 @@ import { ScheduleBlockController } from './controllers/schedule-block.controller
 import { FinanceController } from './controllers/finance.controller';
 import { AuthController } from './controllers/auth.controller';
 import { requireAdmin } from './auth/session';
+import { env } from './config/env';
 
 const app = express();
 const appointmentController = new AppointmentController();
@@ -14,7 +15,11 @@ const scheduleBlockController = new ScheduleBlockController();
 const financeController = new FinanceController();
 const authController = new AuthController();
 
-app.use(cors());
+app.use(cors({
+  origin(origin, callback) {
+    callback(null, !origin || env.corsOrigins.includes(origin));
+  },
+}));
 app.use(express.json()); // Obrigatório para ler o JSON enviado no body
 
 // Rotas do sistema

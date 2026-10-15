@@ -1,8 +1,17 @@
 import { Servico, Slot, AgendamentoInput, Agendamento, BloqueioAgenda, LancamentoFaturamento } from '../types';
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/+$/, '')
+  || (process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : '');
 const ADMIN_TOKEN_KEY = 'barbezap-admin-token';
 const ADMIN_AUTH_EVENT = 'barbezap:auth-state-change';
+
+function apiUrl(path: string) {
+  if (!API_BASE_URL) {
+    throw new Error('Configure NEXT_PUBLIC_API_URL com o endereço público da API.');
+  }
+
+  return `${API_BASE_URL}${path}`;
+}
 
 export function getAdminToken() {
   return typeof window === 'undefined' ? '' : window.sessionStorage.getItem(ADMIN_TOKEN_KEY) || '';
@@ -28,7 +37,7 @@ export function getAdminAuthSnapshot() {
 }
 
 export async function loginAdmin(password: string): Promise<string> {
-  const res = await fetch(`${API_BASE_URL}/auth/login`, {
+  const res = await fetch(apiUrl('/auth/login'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ password }),
@@ -42,7 +51,7 @@ async function adminFetch(path: string, init?: RequestInit) {
   const token = getAdminToken();
   const headers = new Headers(init?.headers);
   if (token) headers.set('Authorization', `Bearer ${token}`);
-  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  const res = await fetch(apiUrl(path), { ...init, headers });
   if (res.status === 401 && token) {
     clearAdminToken();
     window.dispatchEvent(new Event('barbezap:auth-expired'));
@@ -51,19 +60,19 @@ async function adminFetch(path: string, init?: RequestInit) {
 }
 
 export async function getServicos(): Promise<Servico[]> {
-  const res = await fetch(`${API_BASE_URL}/servicos`);
+  const res = await fetch(apiUrl('/servicos'));
   if (!res.ok) throw new Error('Erro ao buscar serviços');
   return res.json();
 }
 
 export async function getSlots(data: string, servicoId: string): Promise<Slot[]> {
-  const res = await fetch(`${API_BASE_URL}/agendamentos/slots?data=${data}&servicoId=${servicoId}`);
+  const res = await fetch(apiUrl(`/agendamentos/slots?data=${data}&servicoId=${servicoId}`));
   if (!res.ok) throw new Error('Erro ao buscar horários livres');
   return res.json();
 }
 
 export async function criarAgendamento(data: AgendamentoInput): Promise<Agendamento> {
-  const res = await fetch(`${API_BASE_URL}/agendamentos`, {
+  const res = await fetch(apiUrl('/agendamentos'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -143,7 +152,7 @@ export async function getFaturamento(inicio: string, fim: string): Promise<Lanca
 export async function getDiasDisponiveis(month: string, servicoId?: string): Promise<string[]> {
   const query = new URLSearchParams({ month });
   if (servicoId) query.set('servicoId', servicoId);
-  const res = await fetch(`${API_BASE_URL}/agendamentos/dias-disponiveis?${query.toString()}`);
+  const res = await fetch(apiUrl(`/agendamentos/dias-disponiveis?${query.toString()}`));
   if (!res.ok) throw new Error('Erro ao buscar dias disponíveis.');
   return res.json();
 }
